@@ -12,6 +12,10 @@ int Vsum = 0;
 int DCBias = 0;
 long Tstart = 0;
 long Tend = 0;
+int MaxNote = 0;
+int MaxVal = 0;
+float SNR = 5;
+int lastnote = 0;
 
 // Notes
 float F1 = 1050; //C 
@@ -20,11 +24,6 @@ float F3 = 1350; //F
 float F4 = 1530; //G
 float F5 = 1760; //A
 float F6 = 1960; //B
-
-int MaxVal = 0;
-int MaxNote = 0;
-float SNR = 5;
-int lastnote = 0;
 
 // Motors
 int motora[] = {6,4,9,11};
@@ -48,9 +47,6 @@ void setup() {
 }
 
 void loop() {
-  //**********************
-  //***SAMPLING SECTION***
-  //**********************
   
   //Record samples:
   Tstart = 0;
@@ -69,7 +65,8 @@ void loop() {
   }
 
   DCBias = Vsum / samples;
-  
+
+  // determine strength of each note in the sample:
   int NoteArray[6] = {
     FTF(samples, V, DCBias, t, F1),
     FTF(samples, V, DCBias, t, F2),
@@ -78,14 +75,12 @@ void loop() {
     FTF(samples, V, DCBias, t, F5),
     FTF(samples, V, DCBias, t, F6)
   };
-  
 
+  // Test to see if any one note is stronger than the others using the signal to noise ratio (SNR)
   int maxVal = 0;
   int maxNote = 0;
   int sumNote = 0;
   float avgNote = 0;
-
-  //Test to see if 1 frequency > 2.5x the average of all the others
   for (int n = 0; n <= 5; n++) {
     if (NoteArray[n] > maxVal) {
       maxVal = NoteArray[n];
@@ -93,18 +88,16 @@ void loop() {
     }
     sumNote += NoteArray[n];  
   }
-  
   avgNote = (sumNote - maxVal) / 5;
-  
 
   if (maxVal / avgNote > SNR) {
-    if (maxNote==0) Move(motora, motorb, power, rev);  //Reverse
-    if (maxNote==1) Move(motora, motorb, power, fwd);      //Forward
+    if (maxNote==0) Move(motora, motorb, power, rev);    //Reverse
+    if (maxNote==1) Move(motora, motorb, power, fwd);    //Forward
     if (maxNote==2) Move(motora, motorb, power, rgt);    //Turn Right
     if (maxNote==3) Move(motora, motorb, power, lft);    //Turn Left
     if (maxNote==4) Move(motora, motorb, power, str);    //Strafe Right
     if (maxNote==5) Move(motora, motorb, power, stl);    //Strafe Left
-    if (maxNote == lastnote) SNR = ;
+    if (maxNote == lastnote) SNR = 2;  //persistance: if loudest note is the same as last time, lower SNR
     else SNR = 6;
   }
   else {
@@ -119,7 +112,6 @@ void loop() {
   //**********************
   //***CUSTOM FUNCTIONS***
   //**********************
-
 
 float FTF(int num_samples, int sample_array[samples], int bias, int time_array[samples], float test_frequency) {
   /* Fourier Transform Function
@@ -167,7 +159,7 @@ void Move(int in1[4], int in2[4], int enable[4], int command[4]) {
   }
 }
 
-void digitalWrite2(int pin, int value) {
+void digitalWrite2(int pin, int value) { //digitalwrite unfortunately doesn't read 1 or 0, so this is my less elegant workaround
   if (value == 1) digitalWrite(pin, HIGH);
   if (value == 0) digitalWrite(pin, LOW);
 }
